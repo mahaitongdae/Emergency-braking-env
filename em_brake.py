@@ -4,7 +4,7 @@ from gym.utils import seeding
 import matplotlib.pyplot as plt
 
 class EmergencyBraking(gym.Env):
-    def __init__(self):
+    def __init__(self, **kwargs):
         metadata = {'render.modes': ['human']}
         self.step_length = 0.1  # ms
         self.action_number = 1
@@ -17,6 +17,8 @@ class EmergencyBraking(gym.Env):
 
     def reset(self):
         self.obs = self._reset_init_state()
+        self.action = np.array([0.0])
+        self.cstr = 0.0
         return self.obs
 
     def step(self, action):
@@ -27,17 +29,21 @@ class EmergencyBraking(gym.Env):
         self.obs = (np.matmul(self.A, self.obs[:, np.newaxis]) + np.matmul(self.B, self.action[:, np.newaxis])).reshape([-1,])
         if self.obs[1] < 0: self.obs[1] = 0
         done = True if self.obs[0] < 0 or self.obs[1] <= 0 else False
-        info = dict()
-        return self.obs, reward, done, info
+        # constraint = np.where(self.obs[0]<0, -self.obs[0], np.zeros_like(self.obs[0])) # todo: problem
+        constraint = -self.obs[0]
+        info = dict(reward_info=dict(reward=reward, constraints=float(constraint)))
+        self.cstr = constraint
+        return self.obs, reward, done, info # s' r
 
 
 
     def _action_transform(self, action):
-        action = np.clip(action, 5, -5)
+        action = 5 * np.clip(action, -1.05, 1.05)
         return action
 
     def compute_reward(self, obs, action):
-        r = 0.01*(obs[0] ** 2 + obs[1] ** 2 + action ** 2)
+        # r = -0.01 * (action[0] ** 2) # obs[0] ** 2 + obs[1] ** 2 +
+        r = -0.01 * np.square(obs[1] - 5.0)
         return r
 
     def _reset_init_state(self):
@@ -68,6 +74,7 @@ class EmergencyBraking(gym.Env):
             plt.text(text_x, text_y, 'distance: {:.2f}m'.format(self.obs[0]))
             plt.text(text_x, text_y - 1, 'velocity: {:.2f}m'.format(self.obs[1]))
             plt.text(text_x, text_y - 2, 'action: {:.2f}m'.format(self.action[0]))
+            plt.text(text_x, text_y - 3, 'constraints: {:.2f}m'.format(self.cstr))
             plt.show()
             plt.pause(0.001)
 
@@ -76,7 +83,7 @@ def test_env():
     obs = env.reset()
     i = 0
     done = 0
-    action = np.array([-5])
+    action = np.array([-1])
     while True:
         obs, reward, done, info = env.step(action)
         env.render()

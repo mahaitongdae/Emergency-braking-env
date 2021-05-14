@@ -48,7 +48,8 @@ class EmergencyBraking(gym.Env):
 
     def _reset_init_state(self):
         d = 10 * np.random.random()
-        v = 10 * np.random.random()
+        v = np.sqrt(2 * 5 * d) * np.random.random()
+        # v = 10 * np.random.random()
         return np.array([d,v])
 
     def seed(self, seed=None):
@@ -79,7 +80,9 @@ class EmergencyBraking(gym.Env):
             plt.pause(0.001)
 
 def test_env():
+    import time
     env = EmergencyBraking()
+    env.step_length = 0.01
     obs = env.reset()
     i = 0
     done = 0
@@ -87,7 +90,8 @@ def test_env():
     while True:
         obs, reward, done, info = env.step(action)
         env.render()
-        if done: env.reset()
+        time.sleep(0.5)
+        if obs[1]<=0.1: env.reset()
         print(reward)
 
 if __name__ == '__main__':
